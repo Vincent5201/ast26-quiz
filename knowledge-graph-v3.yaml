@@ -1,0 +1,493 @@
+# knowledge-graph-v3.yaml
+# Flat DAG with pillar tags. Concepts are generic classical knowledge units;
+# paper-specific contributions live in the papers themselves.
+
+papers:
+  - slug: ssd-iq
+    title: "SSD-iq: Uncovering the Hidden Side of SSD Performance"
+    venue: PVLDB
+    year: 2025
+
+  - slug: zns
+    title: "ZNS: Avoiding the Block Interface Tax for Flash-based SSDs"
+    venue: USENIX ATC
+    year: 2021
+
+  - slug: b-trees-are-back
+    title: "B-Trees Are Back: Engineering Fast and Pageable Node Layouts"
+    venue: SIGMOD
+    year: 2025
+
+  - slug: co-design-btree-zns
+    title: "Co-design of B+-Tree Index with Emerging Zone Interfaces"
+    venue: ACM TACO
+    year: 2025
+
+  - slug: modern-nvme
+    title: "What Modern NVMe Storage Can Do, And How To Exploit It"
+    venue: PVLDB
+    year: 2023
+
+  - slug: duckdb-xnvme
+    title: "DuckDB on xNVMe"
+    venue: arXiv
+    year: 2025
+
+  - slug: watt
+    title: "Write-Aware Timestamp Tracking: Effective and Efficient Page Replacement"
+    venue: PVLDB
+    year: 2023
+
+  - slug: wisckey
+    title: "WiscKey: Separating Keys from Values in SSD-Conscious Storage"
+    venue: FAST
+    year: 2016
+
+  - slug: fastcommit
+    title: "Fast Commit for Ext4"
+    venue: USENIX ATC
+    year: 2024
+
+  - slug: erofs
+    title: "EROFS: A Compression-Friendly Readonly File System for Resource-Scarce Devices"
+    venue: USENIX ATC
+    year: 2019
+
+  - slug: flash-coded-storage
+    title: "Flash-oriented Coded Storage: Research Status and Future Directions"
+    venue: ACM TOS
+    year: 2025
+
+  - slug: anybcq
+    title: "AnyBCQ: Unlocking Multi-Precision Quantization via Binary Coded Representation"
+    venue: ICLR
+    year: 2026
+
+  - slug: leann
+    title: "LEANN: A Low-Storage Overhead Vector Index"
+    venue: arXiv
+    year: 2025
+
+pillars:
+  - slug: ssd
+    title: "Flash & SSD Internals"
+    open: true
+  - slug: io
+    title: "I/O Interfaces & NVMe"
+    open: false
+  - slug: indexing
+    title: "Indexing & Data Structures"
+    open: false
+  - slug: filesystem
+    title: "File Systems"
+    open: false
+  - slug: reliability
+    title: "Reliability & Coding"
+    open: false
+  - slug: system
+    title: "Data Systems"
+    open: false
+
+# ---------------------------------------------------------------------------
+# Concepts — generic classical knowledge units
+#   tier: basic    — student can learn independently
+#   tier: advanced — requires guided explanation, multiple sub-topics
+#
+#   depends_on: concept slugs (forms a DAG)
+#   papers:     paper slugs that use or assume this concept
+# ---------------------------------------------------------------------------
+
+concepts:
+
+  # ==== SSD pillar =========================================================
+
+  - slug: nand-flash
+    title: "NAND Flash Fundamentals"
+    description: >
+      NAND flash 是現代 SSD 的底層儲存介質，理解它的物理特性是學習所有 SSD 相關主題的基礎。我們需要知道 SLC、MLC、TLC、QLC 等不同 cell type 如何在每個 cell 中儲存不同數量的 bit，以及它們在容量、速度與耐久性之間的取捨。NAND flash 的儲存結構是階層式的：page 是最小的讀寫單位，多個 page 組成一個 block，block 再往上組成 plane 與 die。最關鍵的物理限制是 erase-before-write constraint——我們無法直接覆寫已經寫過的 page，必須先將整個 block 抹除才能重新寫入。每個 block 能承受的 P/E cycle 數量有限，超過後 cell 就會開始不穩定，這也是 SSD 壽命的根本瓶頸。理解這些基礎限制，我們才能明白為什麼 SSD 的韌體需要如此複雜的管理機制。
+    tier: basic
+    open: false
+    pillar: ssd
+    depends_on: []
+    papers: [ssd-iq, zns, co-design-btree-zns, flash-coded-storage]
+
+  - slug: ftl
+    title: "Flash Translation Layer"
+    description: >
+      由於 NAND flash 的 erase-before-write 限制，SSD 不能像傳統硬碟一樣直接在原地覆寫資料，因此需要一層韌體來管理邏輯位址與實體位址之間的對應——這就是 Flash Translation Layer（FTL）。FTL 將作業系統看到的 LBA（Logical Block Address）映射到實際 NAND flash 上的 PBA（Physical Block Address），並採用 out-of-place write 策略：每次寫入都寫到新的空白 page，再更新 mapping table 讓 LBA 指向新位置。Mapping table 的設計有不同粒度的取捨——page-level mapping 提供最大彈性但需要大量 SRAM 來儲存映射表，block-level mapping 節省記憶體但會增加不必要的資料搬移。理解 FTL 的運作方式，我們才能解釋為什麼 SSD 的行為與 HDD 有本質上的不同，以及為什麼上層軟體的存取模式會對 SSD 效能產生巨大影響。
+    tier: basic
+    open: false
+    pillar: ssd
+    depends_on: [nand-flash]
+    papers: [ssd-iq, zns, co-design-btree-zns, flash-coded-storage]
+
+  - slug: garbage-collection
+    title: "SSD Garbage Collection"
+    description: >
+      因為 FTL 採用 out-of-place write，隨著時間推移，NAND flash 上會累積大量 invalid page（舊版本的資料），這些 page 所在的 block 無法直接被重新利用。Garbage collection（GC）的工作就是挑選含有較多 invalid page 的 block，將其中仍然有效的 page 搬移到其他 block，然後將整個 block 抹除以回收空間。SSD 會預留一部分使用者看不到的空間作為 over-provisioning（OP），讓 GC 在搬移資料時有足夠的緩衝空間可以運作。選擇哪個 block 來回收是一個重要的策略問題——greedy 策略挑 invalid page 最多的 block 以最大化立即回收的空間，而 cost-benefit 策略則同時考慮資料的冷熱程度以減少長期的搬移開銷。此外，wear leveling 機制確保所有 block 的 P/E cycle 使用量盡量平均，避免某些 block 提早損壞。理解 GC 的運作是掌握 SSD 效能特性的關鍵，因為它直接影響寫入延遲與 SSD 壽命。
+    tier: basic
+    open: false
+    pillar: ssd
+    depends_on: [ftl]
+    papers: [ssd-iq, zns, co-design-btree-zns, flash-coded-storage]
+
+  - slug: write-amplification
+    title: "Write Amplification"
+    description: >
+      Write amplification 是衡量 SSD 效率的核心指標，定義為 WAF = 實際寫入 NAND flash 的資料量除以上層應用程式要求寫入的資料量。理想情況下 WAF 應為 1，但實際上幾乎不可能達到。GC 在搬移 valid page 時會產生額外的寫入；檔案系統的 journaling 機制會將同一筆資料先寫入 journal 再寫入正式位置；LSM-Tree 型態的儲存引擎在 compaction 過程中也會反覆搬移資料；而 RAID 架構中的 partial-stripe update 同樣會造成多餘的寫入。WAF 越高，SSD 的實際壽命就越短，因為每個 cell 的 P/E cycle 消耗得更快，同時寫入效能也會下降。我們在設計和評估儲存系統時，必須將 write amplification 視為一個需要從硬體到軟體全面考量的系統層級問題。
+    tier: basic
+    open: false
+    pillar: ssd
+    depends_on: [garbage-collection]
+    papers:
+      - ssd-iq
+      - zns
+      - co-design-btree-zns
+      - watt
+      - wisckey
+      - flash-coded-storage
+
+  - slug: ssd-steady-state
+    title: "SSD Steady-State Behavior"
+    description: >
+      在這個進階主題中，我們將深入探討 SSD 在長時間持續寫入後的真實效能表現。當 SSD 剛開箱或剛被 secure erase 過時，所有 block 都是乾淨的，此時寫入效能非常好——但這個 fresh state 並不能代表實際使用情境。當可用空間逐漸耗盡後，SSD 進入 steady state，每次寫入都可能觸發 GC，而 GC 與使用者的 I/O 請求競爭 NAND flash 的頻寬，導致 tail latency 出現劇烈的 spike。我們會探討 over-provisioning 比例如何影響 steady state 的效能表現，以及為什麼業界的 benchmark 如果只測 fresh state 就會嚴重高估 SSD 的實際效能。結合先前學到的 garbage collection 與 write amplification 概念，我們將建立一套正確的 benchmarking methodology，學會如何設計實驗來反映 SSD 在生產環境中的真實行為。
+    tier: advanced
+    open: false
+    pillar: ssd
+    depends_on: [garbage-collection, write-amplification]
+    papers: [ssd-iq, watt]
+
+  # ==== I/O pillar =========================================================
+
+  - slug: block-io
+    title: "Block I/O Fundamentals"
+    description: >
+      在作業系統中，我們透過 block device abstraction 將底層儲存裝置抽象為固定大小的 block 來存取，這是所有儲存系統的基礎。我們需要理解兩個關鍵的效能指標：IOPS 衡量每秒能完成多少次 I/O 操作，而 bandwidth 衡量每秒能傳輸多少資料量——不同的工作負載會瓶頸在不同的指標上。在 I/O 模型方面，synchronous I/O 會讓呼叫的 thread 等待操作完成才返回，而 asynchronous I/O 允許我們發出請求後繼續做其他事情，等完成時再處理結果。此外，裝置完成 I/O 後通知 CPU 的方式也有兩種：interrupt 由裝置主動觸發通知，而 polling 則是由 CPU 不斷檢查完成狀態。理解這些基本概念，是我們後續學習 NVMe、io_uring 等現代高效能 I/O 技術的必要前提。
+    tier: basic
+    open: false
+    pillar: io
+    depends_on: []
+    papers:
+      - ssd-iq
+      - modern-nvme
+      - duckdb-xnvme
+      - wisckey
+      - fastcommit
+      - erofs
+
+  - slug: dma
+    title: "Direct Memory Access"
+    description: >
+      當 CPU 親自負責在記憶體與裝置之間搬運資料時，它就無法同時做其他運算，這在高速 I/O 場景下會成為嚴重瓶頸。DMA（Direct Memory Access）讓裝置可以直接存取主記憶體，不需要 CPU 介入每一筆資料的傳輸。為了支援 DMA，我們需要配置 physically contiguous 且 device-accessible 的 memory buffer，因為裝置通常使用 physical address 來定址。當資料分散在多個不連續的記憶體區段時，scatter-gather list 允許我們在一次 DMA 操作中描述多段記憶體位置，避免不必要的資料複製。這種機制也是 zero-copy I/O 的基礎——資料可以直接在裝置與應用程式的 buffer 之間傳輸，省去在 kernel buffer 中轉的開銷。理解 DMA 的運作方式，對於後續學習 NVMe 和 kernel-bypass I/O 如何達到極低延遲至關重要。
+    tier: basic
+    open: false
+    pillar: io
+    depends_on: [block-io]
+    papers: [modern-nvme, duckdb-xnvme]
+
+  - slug: nvme
+    title: "NVMe Protocol"
+    description: >
+      傳統的 AHCI 介面是為旋轉式硬碟設計的，只有單一 command queue 且深度有限，無法充分發揮 SSD 的平行處理能力。NVMe（Non-Volatile Memory Express）是專為 flash storage 設計的協定，直接運行在 PCIe bus 上，大幅降低了協定層的延遲。NVMe 的核心設計是多對 submission queue 與 completion queue，軟體將 I/O command 放入 submission queue 後，透過寫入 doorbell register 通知裝置處理，裝置完成後再將結果放入對應的 completion queue。這種多 queue 架構讓我們可以為每個 CPU core 各配一組 queue pair，避免多核心之間的鎖競爭。NVMe 也引入了 namespace 的概念來劃分裝置上的儲存空間，以及豐富的 command set 支援各種操作。這些設計使 NVMe 成為現代高效能儲存系統的標準介面，也是我們後續討論 io_uring 和 SPDK 等進階 I/O 框架的基礎。
+    tier: basic
+    open: false
+    pillar: io
+    depends_on: [block-io, dma]
+    papers:
+      - ssd-iq
+      - zns
+      - co-design-btree-zns
+      - modern-nvme
+      - duckdb-xnvme
+
+  - slug: io-uring
+    title: "io_uring"
+    description: >
+      在前面我們學過 synchronous 與 asynchronous I/O 的差異，而 Linux 早期的 async I/O 機制（如 libaio）有諸多限制，例如只支援 direct I/O 且 syscall 開銷仍然顯著。io_uring 是 Linux 從 5.1 開始引入的高效能 async I/O 框架，我們將深入探討它如何透過 kernel 與 user space 之間共享的 submission queue 和 completion queue ring buffer，讓應用程式不需要頻繁呼叫 syscall 就能提交與收割 I/O 請求。課程中我們也會介紹 batched submission 如何攤平 syscall 成本、SQPOLL 模式如何讓 kernel thread 持續 polling submission queue 以完全省去 submit 端的 syscall，以及 IOPOLL 模式如何用 polling 取代 interrupt 來降低 completion 延遲。此外，io_uring_cmd 機制允許我們直接下達 NVMe passthrough command，繞過傳統 block layer 的抽象。這些技術結合了我們先前學到的 block I/O 與 NVMe 知識，是目前 Linux 上最重要的高效能 I/O 介面。
+    tier: advanced
+    open: false
+    pillar: io
+    depends_on: [block-io, nvme]
+    papers: [modern-nvme, duckdb-xnvme]
+
+  - slug: kernel-bypass-io
+    title: "Kernel-Bypass I/O"
+    description: >
+      即使有了 io_uring，I/O 路徑仍然要經過 kernel 的 block layer 和 file system，這些軟體層在 NVMe SSD 延遲降到微秒等級後，已經成為不可忽視的瓶頸。Kernel-bypass I/O 的核心思路是把 NVMe 裝置的控制權完全交給 user space，由應用程式直接操作裝置的 submission/completion queue，省去所有 syscall 和 context switch 的開銷。我們將以 SPDK（Storage Performance Development Kit）為例，介紹它的 polling-mode NVMe driver 如何在 user space 完成完整的 I/O 流程，以及如何利用我們之前學過的 DMA 機制讓裝置直接存取應用程式的 memory buffer。課程中也會討論 thread-to-queue affinity 的設計——每個 thread 專屬一組 NVMe queue pair，不需要任何鎖就能並行發送 I/O。這種架構雖然犧牲了 kernel 提供的安全性和多租戶隔離，但在需要極致效能的場景（如高效能資料庫、分散式儲存系統）中被廣泛採用。
+    tier: advanced
+    open: false
+    pillar: io
+    depends_on: [nvme, dma]
+    papers: [modern-nvme, duckdb-xnvme]
+
+  # ==== Indexing pillar =====================================================
+
+  - slug: btree
+    title: "B+Tree"
+    description: >
+      B+Tree 是資料庫最經典的索引結構，幾乎所有關聯式資料庫都以它作為主要的 on-disk index。我們學習 B+Tree 是因為它的高 fan-out 特性讓樹的高度極低，大幅減少磁碟 I/O 次數，這對理解儲存系統的效能瓶頸至關重要。在這個單元中，我們會介紹 B+Tree 的結構：inner node 只負責 routing，所有資料都存放在 leaf node 並以 linked list 串接，方便 range query。我們也會深入討論 search、insert、delete 操作，以及當 node 滿了或太空時觸發的 split 與 merge，還有 prefix truncation 等優化技巧如何進一步提高 fan-out。
+    tier: basic
+    open: false
+    pillar: indexing
+    depends_on: []
+    papers: [b-trees-are-back, co-design-btree-zns]
+
+  - slug: slotted-page
+    title: "Slotted Page Layout"
+    description: >
+      當我們要在固定大小的 disk page 中存放不定長度的 record 時，需要一個靈活的空間管理方式，這就是 slotted page layout 要解決的問題。我們在這個單元會學到一個 page 由三個部分組成：page header 記錄 metadata，slot array 從 page 前端往後成長，每個 slot 存放對應 record 的 offset 與長度，而實際的 record 資料則從 page 尾端往前堆疊成 heap。中間未使用的區域由 free-space pointer 追蹤。這種設計讓我們可以透過 slot indirection 自由搬移 record 來整理碎片空間，同時對外維持穩定的 record identifier，是 B+Tree leaf node 與許多儲存引擎 page 格式的基礎。
+    tier: basic
+    open: false
+    pillar: indexing
+    depends_on: []
+    papers: [b-trees-are-back]
+
+  - slug: bloom-filter
+    title: "Bloom Filter"
+    description: >
+      在儲存系統中，我們經常需要快速判斷「某筆資料是否存在」，而不想每次都去磁碟上做昂貴的查詢，Bloom filter 就是為此設計的機率型資料結構。它使用 k 個 hash function 將元素映射到一個 bit array 上，查詢時只要檢查對應的 k 個位元是否全為 1。Bloom filter 保證不會有 false negative（存在的東西一定查得到），但允許一定機率的 false positive（不存在的東西可能誤判為存在）。我們會分析 false-positive rate 與 bit array 大小、hash function 數量之間的數學關係，幫助我們在實務中選擇合適的參數。理解 Bloom filter 對後續學習 LSM-Tree 至關重要，因為它被大量用來減少不必要的 disk read。
+    tier: basic
+    open: false
+    pillar: indexing
+    depends_on: []
+    papers: [wisckey]
+
+  - slug: lsm-tree
+    title: "LSM-Tree"
+    description: >
+      在前面的單元中，我們學過了 key-value store API 的抽象介面以及 Bloom filter 如何快速過濾不存在的查詢，現在我們要把這些概念組合起來，理解現代 write-intensive 儲存引擎的核心：LSM-Tree。LSM-Tree 的設計哲學是將隨機寫入轉換為循序寫入——我們先將資料寫入 memory 中的 memtable，滿了之後 flush 成 immutable 的 sorted run（SSTable）到磁碟上。隨著 SSTable 數量增加，我們透過 compaction 將它們合併，而 compaction 策略（leveled vs. tiered）決定了 write amplification、read amplification 與 space amplification 之間的取捨。在讀取路徑上，我們會利用先前學過的 Bloom filter 來跳過不包含目標 key 的 SSTable，大幅降低讀取延遲。
+    tier: advanced
+    open: false
+    pillar: indexing
+    depends_on: [kv-store-api, bloom-filter]
+    papers: [zns, co-design-btree-zns, wisckey]
+
+  - slug: hnsw
+    title: "HNSW"
+    description: >
+      當我們需要在數百萬甚至數十億筆高維向量中找到與 query 最相似的結果時，精確的 nearest neighbor search 計算成本過高，因此我們需要 approximate nearest neighbor（ANN）演算法。HNSW 是目前最廣泛使用的 ANN 索引之一，它建構了一個多層的 navigable small world graph，結構類似 skip list：上層是稀疏的 long-range connection 用於快速跳躍，下層是密集的 short-range connection 用於精確搜尋。查詢時我們從最上層開始以 greedy routing 逐層下降，最終在底層找到近似最近鄰。我們會討論建構時 efConstruction 參數如何控制 graph 品質與建構速度的平衡，以及這個索引結構在向量資料庫中的實際應用場景。
+    tier: advanced
+    open: false
+    pillar: indexing
+    depends_on: []
+    papers: [leann]
+
+  - slug: product-quantization
+    title: "Product Quantization"
+    description: >
+      當向量資料集大到無法全部放進 memory 時，我們需要壓縮向量的表示方式來實現 large-scale ANN search，這就是 product quantization（PQ）的核心動機。PQ 的做法是將高維向量切分成多個 sub-vector，對每個子空間獨立訓練 codebook，然後用 codebook 中最近的 centroid 編號來取代原始 sub-vector，大幅降低儲存需求。在查詢時，我們使用 asymmetric distance computation（ADC）——query 向量保持原始精度，只對 database 端的壓縮表示計算近似距離——以在壓縮率與搜尋精度之間取得良好平衡。我們也會介紹 IVF-PQ 如何結合 inverted file index 與 PQ，先用粗粒度的 clustering 縮小搜尋範圍，再用 PQ 進行 disk-resident 的 ANN 搜尋，使得十億級別的向量檢索成為可能。
+    tier: advanced
+    open: false
+    pillar: indexing
+    depends_on: []
+    papers: [leann]
+
+  # ==== File-system pillar ==================================================
+
+  - slug: inode-and-metadata
+    title: "Inodes & File Metadata"
+    description: >
+      檔案系統的核心任務是把使用者看到的檔案與目錄，對應到磁碟上的實際資料區塊。我們透過 inode 這個資料結構來記錄每個檔案的 metadata，包括檔案大小、權限、時間戳記，以及資料區塊的位置。現代檔案系統（如 ext4）使用 extent 來描述連續的區塊範圍，比起早期逐一記錄 block pointer 的方式更加高效。除了 inode 之外，我們還需要理解 directory entry 如何將檔名對應到 inode number，以及 superblock 如何描述整個檔案系統的全域資訊。掌握 on-disk layout 中 metadata 與 data 的區分，是理解後續 journaling、copy-on-write 等進階機制的基礎。
+    tier: basic
+    open: false
+    pillar: filesystem
+    depends_on: []
+    papers: [erofs]
+
+  - slug: journaling
+    title: "Journaling"
+    description: >
+      當系統在寫入檔案的過程中突然斷電或當機，磁碟上的資料可能處於不一致的狀態，例如 inode 已更新但對應的 data block 還沒寫入。Journaling 借用了資料庫 write-ahead logging 的概念，在正式修改檔案系統之前，先把即將執行的變更寫入一塊專用的 journal 區域。我們會學到兩種主要策略：physical journaling 直接記錄完整的 block image，而 logical journaling 只記錄高階的操作描述，後者可以大幅減少 journal 的寫入量。當 journal 中的 commit record 寫入完成後，我們才真正把變更套用到檔案系統本體，這個過程稱為 checkpointing。如果中途發生 crash，系統重啟時只需 replay journal 中已 commit 的紀錄，就能快速回復到一致的狀態，不需要像早期的 fsck 一樣掃描整顆磁碟。
+    tier: basic
+    open: false
+    pillar: filesystem
+    depends_on: [inode-and-metadata]
+    papers: [fastcommit]
+
+  - slug: copy-on-write
+    title: "Copy-on-Write"
+    description: >
+      Journaling 透過額外的 log 區域來保證 crash consistency，但這代表每筆資料實際上被寫了兩次。Copy-on-write（COW）提供了另一種思路：當我們要修改一個 block 時，不直接覆寫原本的位置，而是把新版本寫到一個全新的位置，最後再原子地更新 pointer 使其指向新資料。因為舊資料在 pointer 切換前始終保持完整，所以任何時刻發生 crash 都不會破壞既有的一致性。這個特性也讓 snapshot 的實現變得非常自然——我們只需要保留舊版本的 pointer tree，就能以近乎零成本建立檔案系統的時間點快照。Btrfs 與 ZFS 這兩個現代檔案系統都以 COW 作為核心設計，藉此同時實現資料完整性、snapshot、以及高效的 checksum 驗證。
+    tier: basic
+    open: false
+    pillar: filesystem
+    depends_on: [inode-and-metadata]
+    papers: []
+
+  - slug: log-structured-fs
+    title: "Log-Structured File System"
+    description: >
+      在前面的課程中，我們學過 inode 與 metadata 的 on-disk layout，也了解了 SSD 內部 garbage collection 的機制。Log-structured file system 把整個檔案系統視為一個不斷 append 的 log：所有寫入（無論是 data 還是 metadata）都以循序的方式追加到 log 的尾端，這天然地契合了 SSD 偏好 sequential write 的特性。然而，隨著舊資料被覆寫或刪除，log 中會產生空洞，我們需要透過 segment cleaning 來回收這些無效空間——這與 SSD FTL 層的 garbage collection 面臨相同的挑戰。在這堂課中，我們將探討 F2FS 如何利用 multi-head logging 將 hot data 與 cold data 分離以降低 cleaning 的成本，以及 file system 層級的 garbage collection 如何與 SSD 內部的 garbage collection 協調運作，避免 write amplification 的疊加效應。
+    tier: advanced
+    open: false
+    pillar: filesystem
+    depends_on: [inode-and-metadata, garbage-collection]
+    papers: [co-design-btree-zns]
+
+  - slug: ext4-internals
+    title: "Ext4 Internals"
+    description: >
+      在理解了 journaling 的原理之後，我們將深入探討 Linux 上最廣泛使用的檔案系統 ext4 是如何將這些概念實作出來的。Ext4 將磁碟劃分為多個 block group，每個 group 包含各自的 inode table 與 data block，藉此提升資料的 locality。在 metadata 管理上，ext4 使用 extent tree 來高效地描述大型檔案的連續區塊配置，並透過 delayed allocation 策略將 block 分配延後到實際 writeback 時才執行，以獲得更好的連續配置效果。Journaling 的部分由獨立的 JBD2 層負責，它實作了 physical journaling，並支援 ordered mode 來保證 data 在 metadata commit 之前已經寫入磁碟。在這堂課中，我們也會介紹 ext4 superblock 中的 feature flags 機制，以及近年來 fast commit 等優化如何減少 journaling 的延遲開銷。
+    tier: advanced
+    open: false
+    pillar: filesystem
+    depends_on: [journaling]
+    papers: [fastcommit]
+
+  # ==== Reliability pillar ==================================================
+
+  - slug: error-coding-basics
+    title: "Error Coding Basics"
+    description: >
+      在儲存系統中，資料從寫入到讀出的過程中可能因為硬體老化、電磁干擾等因素而產生錯誤，因此我們需要 error coding 來保護資料的完整性。這個單元會介紹 error detection 與 error correction 的差異：detection 只負責發現錯誤（例如 CRC、checksum），而 correction 則能自動修復錯誤（例如 Hamming code）。我們會從最基本的 parity bit 與 XOR 運算開始，理解如何用少量的冗餘資料偵測單一 bit 錯誤，再延伸到 CRC 如何透過多項式除法偵測 burst error。最後我們會建立 Hamming distance 的觀念——兩個 codeword 之間至少有幾個 bit 不同——以及一個 code 的 minimum distance 如何決定它能偵測和更正多少個錯誤。這些基礎觀念是後續學習 Galois field arithmetic、RAID、erasure coding 以及 LDPC 等進階主題的必要前置知識。
+    tier: basic
+    open: false
+    pillar: reliability
+    depends_on: []
+    papers: [flash-coded-storage]
+
+  - slug: galois-field-arithmetic
+    title: "Galois Field Arithmetic"
+    description: >
+      在 error-coding-basics 中我們學到了 XOR 和 Hamming distance 等基礎概念，但要建構更強大的編碼技術（如 Reed-Solomon），我們需要一套能在有限元素上做四則運算的數學工具，這就是 Galois field。我們會聚焦在 GF(2^w) 這類 finite field：它的加法就是 XOR，而乘法則透過 primitive polynomial 定義，實務上可以用 log/antilog table 來加速計算。理解 GF(2^w) 的運算規則後，我們就能在這個 field 上建構矩陣運算，這是 Reed-Solomon 編碼與解碼的核心。同時 LDPC code 中的 sparse parity-check matrix 也建立在 finite field 的代數結構之上。掌握 Galois field arithmetic 讓我們能把 error coding 從簡單的 bit-level XOR 推展到 symbol-level 的強大糾錯能力，是連結基礎理論與實際儲存系統編碼方案的關鍵橋梁。
+    tier: basic
+    open: false
+    pillar: reliability
+    depends_on: [error-coding-basics]
+    papers: [flash-coded-storage]
+
+  - slug: raid
+    title: "RAID"
+    description: >
+      單顆硬碟或 SSD 終究會故障，因此我們需要 RAID（Redundant Array of Independent Disks）將多顆磁碟組合起來，同時提升效能與可靠性。我們會依序介紹幾種常見的 RAID level：RAID 0 透過 striping 將資料分散到多顆磁碟以提高 throughput；RAID 1 透過 mirroring 保留完整副本以提供冗餘；RAID 5 將 parity 分散存放在所有磁碟上，能容忍任一顆磁碟故障；RAID 6 則使用雙重 parity，能容忍任意兩顆磁碟同時故障。除了正常運作模式，我們也會討論 degraded mode 下的讀取流程——當某顆磁碟故障時，系統如何透過 XOR 或 parity 計算即時重建遺失的資料。Rebuild process 是 RAID 運維中的關鍵議題：重建期間系統處於脆弱狀態，若此時又有磁碟故障便可能造成資料遺失，因此我們需要了解 rebuild 的效能瓶頸與風險。RAID 的概念是後續學習 erasure coding 的重要基礎，因為 erasure coding 可以被視為 RAID 的推廣與最佳化。
+    tier: basic
+    open: false
+    pillar: reliability
+    depends_on: [error-coding-basics]
+    papers: [flash-coded-storage]
+
+  - slug: erasure-coding
+    title: "Erasure Coding"
+    description: >
+      在學過 Galois field arithmetic 提供的代數工具以及 RAID 的磁碟冗餘策略之後，我們可以進入更通用的 erasure coding 框架。Erasure coding 與 error correction 的關鍵差異在於：erasure 情境下我們已經知道哪些資料區塊遺失了（例如某顆磁碟故障），只需要從剩餘的區塊中重建資料，而不需要像 error correction 那樣先定位錯誤。我們會介紹 Reed-Solomon code 如何在 GF(2^w) 上建構編碼矩陣，以及 MDS（Maximum Distance Separable）property 與 Singleton bound 的意義——MDS code 能以理論上最少的冗餘達到最大的容錯能力，可以視為 RAID 5/6 的數學推廣。實務上，我們會討論如何使用 Cauchy matrix 來建構高效的編碼矩陣，使得 encoding 和 decoding 只需要 XOR 運算即可完成。此外，我們也會介紹 Local Reconstruction Codes（LRC）的設計動機：在大規模分散式儲存系統中，修復單一區塊故障時若需要讀取所有存活區塊，網路開銷會過於龐大，LRC 透過增加 local parity 來大幅降低單一區塊修復所需的 I/O 量。
+    tier: advanced
+    open: false
+    pillar: reliability
+    depends_on: [galois-field-arithmetic, raid]
+    papers: [flash-coded-storage]
+
+  - slug: ldpc
+    title: "LDPC Codes"
+    description: >
+      在 error-coding-basics 中我們學到了 error correction 的基本原理，而在 SSD pillar 的 nand-flash 單元中我們了解到 NAND flash cell 隨著 P/E cycle 增加會逐漸劣化、bit error rate 會持續上升，因此現代 SSD 需要非常強大的 error correction code，這就是 LDPC（Low-Density Parity-Check）code 被廣泛採用的原因。我們會介紹 LDPC code 的核心結構：一個 sparse parity-check matrix H，其中大部分元素為零，這個稀疏特性使得解碼演算法能夠高效運作。透過 Tanner graph 的圖形化表示，我們可以直觀理解 variable node 與 check node 之間的關係，並在此基礎上介紹 belief-propagation decoding 演算法如何透過在圖上反覆傳遞機率訊息來逐步收斂到正確的 codeword。最後我們會討論 hard-decision 與 soft-decision decoding 的差異：hard-decision 只使用每個 cell 讀出的 0 或 1，而 soft-decision 則利用 NAND flash 的 multi-level voltage sensing 來取得每個 bit 的信賴度資訊，大幅提升糾錯能力，但也需要更多次的 flash read 操作與更高的解碼運算量。
+    tier: advanced
+    open: false
+    pillar: reliability
+    depends_on: [error-coding-basics, nand-flash]
+    papers: [flash-coded-storage]
+
+  # ==== System pillar =======================================================
+
+  - slug: kv-store-api
+    title: "Key-Value Store API"
+    description: >
+      幾乎所有的 storage engine 最終都透過 Key-Value Store API 來對外提供服務，包括 Put、Get、Delete、Scan 等基本操作。我們需要理解 memtable 如何作為 in-memory write buffer 暫存寫入資料，以及 write-ahead log (WAL) 如何在系統崩潰時保障資料的 durability。此外，我們也會學到 snapshot 和 iterator 的概念，它們讓使用者可以在一致的資料視圖上進行讀取與遍歷。掌握這組 API 是後續理解 LSM-Tree、B+Tree 等進階索引結構的必要基礎，因為這些結構本質上都是在實作這套介面。
+    tier: basic
+    open: false
+    pillar: system
+    depends_on: []
+    papers: [zns, co-design-btree-zns, wisckey]
+
+  - slug: buffer-pool
+    title: "Buffer Pool"
+    description: >
+      磁碟的存取速度遠低於記憶體，因此資料庫系統需要一個 buffer pool 來將常用的 disk page 快取在記憶體中。我們需要學習各種 eviction policy（如 LRU、LRU-K、Clock、ARC）來決定記憶體不足時該優先淘汰哪些 page，並理解 dirty-page tracking 與 writeback 機制如何確保修改過的資料最終被寫回磁碟。pin/unpin protocol 則確保正在被存取的 page 不會被意外淘汰。Buffer pool 的設計直接影響資料庫的 I/O 效率，也是理解 B+Tree on disk 與 storage engine 效能調校的核心知識。
+    tier: basic
+    open: false
+    pillar: system
+    depends_on: []
+    papers:
+      - b-trees-are-back
+      - co-design-btree-zns
+      - modern-nvme
+      - duckdb-xnvme
+      - watt
+
+  - slug: data-compression
+    title: "Data Compression"
+    description: >
+      在 storage system 中，資料壓縮可以有效減少磁碟使用量與 I/O 傳輸量，但也會帶來 CPU 開銷與 read amplification。我們會學習 block compression 的基本單位概念、dictionary coding 如何利用重複值來節省空間，以及 entropy coding（Huffman、ANS）如何根據符號出現頻率進行最佳編碼。另一個重要的設計取捨是 fixed-input 與 fixed-output paradigm 的差異——前者壓縮率較好但隨機讀取困難，後者犧牲壓縮率換取 O(1) 定位能力。理解這些壓縮基礎，對後續學習 columnar storage 格式與 deduplication 技術至關重要。
+    tier: basic
+    open: false
+    pillar: system
+    depends_on: []
+    papers: [erofs]
+
+  - slug: inverted-index
+    title: "Inverted Index"
+    description: >
+      當我們需要從大量文件中快速找到包含特定關鍵字的文件時，逐一掃描顯然不可行。Inverted index 透過建立從 term 到 document ID 的 posting list，讓全文檢索可以在接近常數時間內完成。我們會學習 TF-IDF scoring 如何衡量一個 term 對特定文件的重要程度，以及 index construction 與 merging 的流程如何處理大量資料的索引建立。Query processing 中的 AND/OR 操作則決定了多關鍵字查詢的語意。Inverted index 是搜尋引擎與 log analysis 系統的基礎元件，也是理解現代資訊檢索架構的起點。
+    tier: basic
+    open: false
+    pillar: system
+    depends_on: []
+    papers: []
+
+  - slug: deduplication
+    title: "Deduplication"
+    description: >
+      在前面學過 data compression 消除資料內部的冗餘之後，我們進一步探討如何消除資料之間的重複。Deduplication 利用 cryptographic hashing（如 SHA-256）對資料區塊計算 fingerprint，將內容相同的區塊只儲存一份，實現 content-addressed storage。課堂上我們會比較 fixed-size chunking 與 variable-size chunking（基於 Rabin fingerprint）在 dedup ratio 與計算成本上的差異，並討論 inline dedup（寫入時即時去重）與 offline dedup（背景批次處理）的適用場景。Reference counting 的管理也是實務上的挑戰，因為它直接影響到資料何時可以被安全刪除。
+    tier: advanced
+    open: false
+    pillar: system
+    depends_on: [data-compression]
+    papers: []
+
+  - slug: columnar-storage
+    title: "Columnar Storage"
+    description: >
+      在 data compression 的基礎上，columnar storage 進一步利用同一欄位資料型態一致、值域重複性高的特性，達到遠超 row-oriented 格式的壓縮率。我們會深入探討 Parquet 與 ORC 這兩種主流 column-oriented file format 的設計，包括 row group 如何劃分資料以平衡平行處理與壓縮效率，column chunk 內如何套用 dictionary encoding 與 RLE encoding。課堂上也會講解 predicate pushdown 如何讓查詢引擎在讀取資料前就過濾掉不需要的 row group，以及 projection pruning 如何只讀取查詢所需的欄位，大幅減少 I/O 量。這些技術是現代 OLAP 與大數據系統高效能的關鍵。
+    tier: advanced
+    open: false
+    pillar: system
+    depends_on: [data-compression]
+    papers: []
+
+  - slug: model-quantization
+    title: "Model Quantization"
+    description: >
+      隨著大型語言模型的參數量動輒數十億甚至上千億，如何高效地儲存與載入這些 model weights 成為 storage system 的重要課題。Model quantization 透過降低 neural network weight 的數值精度（例如從 FP32 降到 INT8 或 INT4），大幅減少模型佔用的儲存空間與記憶體頻寬需求。我們會介紹 uniform quantization 與 non-uniform quantization 的差異，並比較 post-training quantization (PTQ) 與 quantization-aware training (QAT) 在 accuracy 與 throughput 之間的取捨。這個主題讓我們從 storage 的角度理解 ML inference 的效率瓶頸，也為閱讀 AnyBCQ 等利用 binary coded representation 的最新研究做好準備。
+    tier: advanced
+    open: false
+    pillar: system
+    depends_on: []
+    papers: [anybcq]
+
+# ---------------------------------------------------------------------------
+# Projects
+# ---------------------------------------------------------------------------
+
+projects:
+  - slug: ftl-simulator
+    title: "Build a Mini FTL Simulator"
+    depends_on: [ftl, garbage-collection, write-amplification]
+
+  - slug: io-benchmark-arena
+    title: "I/O Interface Benchmark Arena"
+    depends_on: [io-uring, kernel-bypass-io, block-io]
+
+  - slug: lsm-kv-store
+    title: "Mini LSM-Tree Key-Value Store"
+    depends_on: [lsm-tree, bloom-filter, kv-store-api]
+
+  - slug: erasure-coding-lab
+    title: "Erasure Coding Implementation & Benchmark"
+    depends_on: [erasure-coding, raid]
+
+  - slug: vector-search-engine
+    title: "Vector Search Engine on SSD"
+    depends_on: [hnsw, product-quantization]
+
+  - slug: fs-crash-forensics
+    title: "File System Crash Forensics: ext4 vs F2FS"
+    depends_on: [ext4-internals, log-structured-fs, journaling]

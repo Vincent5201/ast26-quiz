@@ -1,39 +1,46 @@
 # Available Concepts
 
-## ⚡ Flash & SSD Internals
-- `flash-ssd/nand-cell-types` — NAND Flash Cell Types
-- `flash-ssd/block-page-plane-hierarchy` — Block / Page / Plane Hierarchy
-- `flash-ssd/ssd-architecture` — SSD Architecture
-- `flash-ssd/ftl-flash-translation-layer` — Flash Translation Layer (FTL)
-- `flash-ssd/garbage-collection` — Garbage Collection & Write Amplification
-- `flash-ssd/wear-leveling` — Wear Leveling
-## 🔌 I/O Interfaces & Kernel
-- `io-interfaces/block-device-layer` — Block Device Layer
-- `io-interfaces/nvme-protocol` — NVMe Protocol
-- `io-interfaces/io-schedulers` — I/O Schedulers
-- `io-interfaces/dma-and-interrupts` — DMA & Interrupts
-- `io-interfaces/io-uring` — io_uring & Async I/O
-## 📚 Indexing & Data Structures
-- `indexing/btree-btreeplus` — B-Tree & B+Tree
+## Flash & SSD Internals
+- `ssd/nand-flash` — NAND Flash Fundamentals
+- `ssd/ftl` — Flash Translation Layer
+- `ssd/garbage-collection` — SSD Garbage Collection
+- `ssd/write-amplification` — Write Amplification
+- `ssd/ssd-steady-state` — SSD Steady-State Behavior
+
+## I/O Interfaces & NVMe
+- `io/block-io` — Block I/O Fundamentals
+- `io/dma` — Direct Memory Access
+- `io/nvme` — NVMe Protocol
+- `io/io-uring` — io_uring
+- `io/kernel-bypass-io` — Kernel-Bypass I/O
+
+## Indexing & Data Structures
+- `indexing/btree` — B+Tree
+- `indexing/slotted-page` — Slotted Page Layout
+- `indexing/bloom-filter` — Bloom Filter
 - `indexing/lsm-tree` — LSM-Tree
-- `indexing/bloom-filters` — Bloom Filters
-- `indexing/hash-indexing` — Hash Indexing
-- `indexing/learned-indexes` — Learned Indexes
-## 📁 File Systems
-- `filesystems/journaling` — Journaling
-- `filesystems/copy-on-write` — Copy-on-Write (COW)
-- `filesystems/log-structured-fs` — Log-Structured File Systems
-- `filesystems/extent-based-allocation` — Extent-Based Allocation
-- `filesystems/filesystem-metadata` — File System Metadata & Inodes
-## 🛡️ Reliability & Fault Tolerance
-- `reliability/raid-levels` — RAID Levels
-- `reliability/checksums-and-scrubbing` — Checksums & Scrubbing
-- `reliability/replication` — Replication
+- `indexing/hnsw` — HNSW
+- `indexing/product-quantization` — Product Quantization
+
+## File Systems
+- `filesystem/inode-and-metadata` — Inodes & File Metadata
+- `filesystem/journaling` — Journaling
+- `filesystem/copy-on-write` — Copy-on-Write
+- `filesystem/log-structured-fs` — Log-Structured File System
+- `filesystem/ext4-internals` — Ext4 Internals
+
+## Reliability & Coding
+- `reliability/error-coding-basics` — Error Coding Basics
+- `reliability/galois-field-arithmetic` — Galois Field Arithmetic
+- `reliability/raid` — RAID
 - `reliability/erasure-coding` — Erasure Coding
-- `reliability/failure-models` — Failure Models
-## 🗄️ Data Systems & Distributed Storage
-- `data-systems/write-ahead-logging` — Write-Ahead Logging (WAL)
-- `data-systems/consensus-protocols` — Consensus Protocols
-- `data-systems/distributed-storage` — Distributed Storage
-- `data-systems/caching-strategies` — Caching Strategies
-- `data-systems/storage-tiering` — Storage Tiering
+- `reliability/ldpc` — LDPC Codes
+
+## Data Systems
+- `system/kv-store-api` — Key-Value Store API
+- `system/buffer-pool` — Buffer Pool
+- `system/data-compression` — Data Compression
+- `system/inverted-index` — Inverted Index
+- `system/deduplication` — Deduplication
+- `system/columnar-storage` — Columnar Storage
+- `system/model-quantization` — Model Quantization
