@@ -1,0 +1,32 @@
+author: david20041024
+date: 2026-03-16
+question: |
+  你有一個SSD，規格如下：
+
+  - Bandwidth 上限：1.5 GB/s
+  - CPU 可以處理 interrupt 每秒約 380K 次，會出現 interrupt storm，所以會切換成Polling 模式。
+  - 假設可以直接用Bandwidth=IOPS*IO Size，來算IOPS上限。
+
+  今天我先random 4 KB read一陣子，再 sequential 256 KB write一陣子。
+  請問SSD IOPS上限最接近多少，以及兩個操作的CPU模式？
+
+options:
+  - text: "393K IOPS；操作1: Polling 模式；操作2: Interrupt 模式"
+    correct: true
+    explanation: |
+      正確。
+      操作1: 1.5*1024*1024/4 = 393K IOPS。所以是 Polling 模式。
+      操作2: 1.5*1024*1024/256 = 6.1K IOPS。所以是 Interrupt 模式。
+  - text: "393K IOPS；操作1: Interrupt 模式；操作2: Interrupt 模式"
+    explanation: |
+      錯誤。
+      操作1中，393K>380K，所以會出現 interrupt storm，會切換成Polling 模式。
+  - text: "375K IOPS；操作1: Interrupt 模式；操作2: Interrupt 模式"
+    correct: true
+    explanation: |
+      錯誤。
+      不能過於簡單用1000作為基底轉換，應該要用1024。
+  - text: "6.1K IOPS；操作1: Interrupt 模式；操作2: Interrupt 模式"
+    explanation: |
+      錯誤。
+      用sequential會算出很小的IOPS，應該要用random來算IOPS上限。
