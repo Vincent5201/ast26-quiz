@@ -1,0 +1,18 @@
+author: david20041024
+date: 2026-03-19
+question: |
+  在高效能儲存系統（如使用 io_uring 與 NVMe SSD）的架構設計中，關於 I/O 處理，下列何者最為精確？
+options:
+  - text: "Fibers 能在單一執行緒中彼此平行運算，因此在 SQ/CQ 高負載時，硬體 I/O 能獲得加速。"
+    explanation: |
+      Fibers 是 user-space 的協作式協程，提供並行的控制流，讓單一執行緒可以在等待 I/O 時切換到其他任務，但 Fibers 不提供真正的平行運算。
+  - text: "在 io_uring 中，因為 Kernel 跟 User 彼此擁有完全分開的 SQ/CQ，所以可以實現 SQE 的 Batch submission，減少 syscall 的次數。"
+    explanation: |
+      通常 io_uring 的 SQ/CQ 是共享，User 可以一次寫入多個 SQE，然後只花費一個 syscall。
+  - text: "SQE 的資料結構通常為 64 bytes，而 CQE 為 16 bytes，這是因為提交請求需要包含操作指令等。"
+    correct: true
+    explanation: |
+      SQE 需要包含更多資訊，但是 CQE 通常只需要包含完成狀態與結果，因此才產生了大小的差異。
+  - text: "為了極大化吞吐量，多顆 SSD 應共享同一個 SQ/CQ 隊列以減少管理開銷。"
+    explanation: |
+      不同 SSD 的 SQ/CQ 通常是獨立的，不然容易造成資源競爭與增加管理成本。
