@@ -5,8 +5,8 @@ question: |
 options:
   - text: "Kernel-Bypass I/O 無法使用 Kernel 提供的各種功能。"
     explanation: |
-      Kernel-Bypass I/O 犧牲了 Kernel 提供的安全檢查、硬體抽象化等大量功能，開發者必須
-      在 User-space 自行實作或管理這些邏輯，技術門檻與開發成本大幅增加。
+      Kernel-Bypass I/O 犧牲了 Kernel 提供的安全檢查、硬體抽象化等大量功能，開發者必須自行
+      實作或管理這些邏輯，技術門檻與開發成本大幅增加。
   - text: "交給 Kernel-Bypass I/O 所管理的記憶體，只有一個 process 可以使用。"
     explanation: |
       Kernel-Bypass 通常會讓應用程式直接接管硬體與特定記憶體區域，這種「獨佔」機制使得硬
@@ -19,4 +19,4 @@ options:
   - text: "原則上 Kernel-Bypass I/O 會占用 CPU 執行 Polling 模式。"
     explanation: |
       Kernel-Bypass I/O 為了低延遲所以採用 Polling，這意味著即便在沒有資料傳輸時，
-      該 CPU 核心也會維持高負載，在非頻繁 I/O 的情境下會造成電力與運算資源浪費。
+      該 CPU 也會維持高負載，在非頻繁 I/O 的情境下會造成電力與運算資源浪費。
