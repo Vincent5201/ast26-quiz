@@ -19,8 +19,8 @@ options:
     explanation: |
       雖然 sequential write 確實減輕了 GC 壓力，但 compaction 過程中同一筆資料會被反覆讀出
       再寫回造成高 WAF，並且這個軟體層的 WAF 到了 SSD 內部還會被 GC 再放大一次
-  - text: "LSM-tree 將 random write 轉成 sequential write，因此搭配 QLC 時 SSD 內部不會
-          產生 GC，compaction 的 WAF 是主要的寫入放大來源"
+  - text: "LSM-tree 將 random write 轉成 sequential write，因此搭配 QLC 時可以大幅減少 SSD 
+          內部產生的 GC，因此 compaction 的 WAF 是主要的寫入放大來源"
     explanation: |
       正確敘述。都是 sequential write 時，SSD 就不需要做 GC，主要的 WAF 來源就會是 compaction。
       
