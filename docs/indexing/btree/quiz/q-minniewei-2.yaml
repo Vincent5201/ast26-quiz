@@ -9,7 +9,7 @@ question: |
   現有兩種不同的方案:
     - 方案甲：Fan-out $M=10$
     - 方案乙：Fan-out $M=1000$
-  請問哪一個方案的「總搜尋時間」較短，其主導因素為何？
+  請問哪一個方案的「總搜尋時間」較短，其主要原因為何？
 
 options:
   - text: "方案乙較短，主導原因是 I/O 次數大幅下降。"
@@ -23,7 +23,7 @@ options:
         - I/O 次數計算: $\lceil \log_{1000}(10^6)_{\text{inner}} \rceil + 1_{\text{leaf}} = 3$ 
         - 二元數搜尋時間計算: $(2 \times \log_2 1000 + 1 \times \log_2 100) \times 1\mu\text{s} \approx 26.57 \text{ us}$
         - 總時間計算:  $(3 \times 10 \text{ ms}) + 26.57 \text{ us} \approx 30.02657 \text{ ms}$
-      從此分析可見，方案乙的總搜尋時間較短，主導因素是 I/O 次數大幅下降。
+      從此分析可見，方案乙的總搜尋時間較短，主要原因是 I/O 次數大幅下降。
   - text: "方案甲較短，主因是二元搜尋所需要的時間較短"
     explanation: |
       兩者在二元搜尋時間相差不大。
